@@ -57,14 +57,22 @@ data_train = scio.loadmat(data_path)
 # 获得训练数据并进行数据处理
 origin_data_train_data = data_train.get('data')
 # print(origin_data_train_data.shape)
-data_train_data = np.reshape(origin_data_train_data,(-1,2304))
+data_train_data = np.reshape(origin_data_train_data,(-1,48,48,1))
 # print(data_train_data.shape)
+data_train_data_resize = []
+for i in range(data_train_data.shape[0]):
+    # if i % 1000 == 0:
+    #     print('now resize 48 --> 256 train set', i)
+    data_train_data_resize.append(cv.resize(data_train_data[i], (256, 256), interpolation=cv.INTER_LINEAR))
+data_train_data_end = np.array(data_train_data_resize)
+# print(data_train_data_end.shape)
+data_train_data = np.reshape(data_train_data_end,(-1,65536))
 
 # 获取训练数据标签并处理
 data_train_label = data_train.get('label')
 # print(data_train_label.shape)
 
-#将已获得的数据传给切分函数
+# 将已获得的数据传给切分函数
 ds = DataSet(data_train_data,data_train_label,28709)
 
 #  CNN权重
@@ -84,45 +92,93 @@ def conv2d(x,W):
 
 #  池化层（采用最大池化）
 def max_pool_2x2(x):
-    return tf.nn.max_pool2d(x,ksize=[1,3,3,1],strides=[1,2,2,1],padding='SAME')
+    return tf.nn.max_pool2d(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding='SAME')
 
 #  初始化输入X
 #  输入大小为48*48
-x = tf.placeholder(tf.float32, shape=[None,2304])
+x = tf.placeholder(tf.float32, shape=[None,65536])
 #  初始化输出Y
 #  [0,6]共七个分类
 y_ = tf.placeholder(tf.float32,shape=[None,7])
 
-# 第一个卷积层
-# 创建卷积核W_conv1,表示卷积核大小为5*5，第一层网络的输入和输出神经元个数分别为1和32
-W_conv1 =  weight_variable([5,5,1,32])
-b_conv1 = bias_variable([32])
-
-x_image = tf.reshape(x,[-1,48,48,1])
+W_conv1_1 =  weight_variable([3,3,1,32])
+b_conv1_1 = bias_variable([32])
+x_image = tf.reshape(x,[-1,256,256,1])
 # relu激化和池化
-h_conv1 = tf.nn.relu(conv2d(x_image,W_conv1) + b_conv1)
-# h_pool1的输出即为第一层网络输出，shape为[batch,24,24,32]
-h_pool1 = max_pool_2x2(h_conv1)
+h_conv1_1 = tf.nn.relu(conv2d(x_image,W_conv1_1) + b_conv1_1)
 
-# 第二个卷积层
-W_conv2 = weight_variable([5,5,32,64])
-b_conv2 = bias_variable([64])
-h_conv2 = tf.nn.relu(conv2d(h_pool1,W_conv2) + b_conv2)
-h_pool2 = max_pool_2x2(h_conv2)
+W_conv1_2 = weight_variable([3,3,32,64])
+b_conv1_2 = bias_variable([64])
+h_conv1_2 = tf.nn.relu(conv2d(h_conv1_1,W_conv1_2) + b_conv1_2)
+h_pool1 = max_pool_2x2(h_conv1_2)
 
-# 第三个卷积层
-W_conv3 = weight_variable([5,5,64,128])
-b_conv3 = bias_variable([128])
-h_conv3 = tf.nn.relu(conv2d(h_pool2,W_conv3) + b_conv3)
-h_pool3 = max_pool_2x2(h_conv3)
+W_conv2_1 = weight_variable([3,3,64,128])
+b_conv2_1 = bias_variable([128])
+h_conv2_1 = tf.nn.relu(conv2d(h_pool1,W_conv2_1) + b_conv2_1)
+
+W_conv2_2 = weight_variable([3,3,128,128])
+b_conv2_2 = bias_variable([128])
+h_conv2_2 = tf.nn.relu(conv2d(h_conv2_1,W_conv2_2) + b_conv2_2)
+h_pool2 = max_pool_2x2(h_conv2_2)
+
+W_conv3_1 = weight_variable([3,3,128,256])
+b_conv3_1 = bias_variable([256])
+h_conv3_1 = tf.nn.relu(conv2d(h_pool2,W_conv3_1) + b_conv3_1)
+
+W_conv3_2 = weight_variable([3,3,256,256])
+b_conv3_2 = bias_variable([256])
+h_conv3_2 = tf.nn.relu(conv2d(h_conv3_1,W_conv3_2) + b_conv3_2)
+
+W_conv3_3 = weight_variable([3,3,256,256])
+b_conv3_3 = bias_variable([256])
+h_conv3_3 = tf.nn.relu(conv2d(h_conv3_2,W_conv3_3) + b_conv3_3)
+
+W_conv3_4 = weight_variable([3,3,256,256])
+b_conv3_4 = bias_variable([256])
+h_conv3_4 = tf.nn.relu(conv2d(h_conv3_3,W_conv3_4) + b_conv3_4)
+h_pool3 = max_pool_2x2(h_conv3_4)
+
+W_conv4_1 = weight_variable([3,3,256,512])
+b_conv4_1 = bias_variable([512])
+h_conv4_1 = tf.nn.relu(conv2d(h_pool3,W_conv4_1) + b_conv4_1)
+
+W_conv4_2 = weight_variable([3,3,512,512])
+b_conv4_2 = bias_variable([512])
+h_conv4_2 = tf.nn.relu(conv2d(h_conv4_1,W_conv4_2) + b_conv4_2)
+
+W_conv4_3 = weight_variable([3,3,512,512])
+b_conv4_3 = bias_variable([512])
+h_conv4_3 = tf.nn.relu(conv2d(h_conv4_2,W_conv4_3) + b_conv4_3)
+
+W_conv4_4 = weight_variable([3,3,512,512])
+b_conv4_4 = bias_variable([512])
+h_conv4_4 = tf.nn.relu(conv2d(h_conv4_3,W_conv4_4) + b_conv4_4)
+h_pool4 = max_pool_2x2(h_conv4_4)
+
+W_conv5_1 = weight_variable([3,3,512,512])
+b_conv5_1 = bias_variable([512])
+h_conv5_1 = tf.nn.relu(conv2d(h_pool4,W_conv5_1) + b_conv5_1)
+
+W_conv5_2 = weight_variable([3,3,512,512])
+b_conv5_2 = bias_variable([512])
+h_conv5_2 = tf.nn.relu(conv2d(h_conv5_1,W_conv5_2) + b_conv5_2)
+
+W_conv5_3 = weight_variable([3,3,512,512])
+b_conv5_3 = bias_variable([512])
+h_conv5_3 = tf.nn.relu(conv2d(h_conv5_2,W_conv5_3) + b_conv5_3)
+
+W_conv5_4 = weight_variable([3,3,512,512])
+b_conv5_4 = bias_variable([512])
+h_conv5_4 = tf.nn.relu(conv2d(h_conv5_3,W_conv5_4) + b_conv5_4)
+h_pool5 = max_pool_2x2(h_conv5_4)
 
 # 全连接层
 # 该层拥有4608个神经元（神经元个数可在0~4000间调参）
 # W的第1维size为6*6*128，6*6是h_pool2输出的size，64是第2层输出神经元个数
-w_fc1 = weight_variable([6 * 6 * 128, 4608])
+w_fc1 = weight_variable([8 * 8 * 512, 4608])
 b_fc1 = bias_variable([4608])
-h_pool3_flat = tf.reshape(h_pool3, [-1, 6 * 6 * 128])
-h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat,w_fc1) + b_fc1)
+h_pool5_flat = tf.reshape(h_pool3, [-1, 8 * 8 * 512])
+h_fc1 = tf.nn.relu(tf.matmul(h_pool5_flat,w_fc1) + b_fc1)
 
 # Dropout减少过拟合
 keep_prob = tf.placeholder(tf.float32)
@@ -154,11 +210,11 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 # averagedroplist = []
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for i in range(10000):
-        batch = ds.next_batch(128)
+    for i in range(5000):
+        batch = ds.next_batch(50)
         if i % 100 == 0:
             # average_accuracy = np.mean(averagedroplist)
-            train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.0})
+            train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
             print('step %d, training accuracy %g' % (i, train_accuracy))
             # ydrop.append(average_accuracy)
             # averagedroplist = []
@@ -201,6 +257,8 @@ with tf.Session() as sess:
 # plt.xlabel('times')
 # plt.ylabel('fitness')
 # plt.show()
+
+
 
 
 
